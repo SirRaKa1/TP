@@ -25,6 +25,7 @@ body {
   background-color: #106BA3;
   padding: 10px 10px;
   border-bottom: 4px solid black;
+  max-width:100% ;
 }
 
 .header a {
