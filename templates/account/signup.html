@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% load crispy_forms_filters %}
+
+{% block title %}Регистрация{% endblock %}
+
+{% block content %}
+    <div class="container">
+        <div class="jumbotron col-lg-6 col-sm-1 container" style="padding-bottom: 60px;">
+            <h2>Регистрация</h2>
+            <hr>
+            <form method="post">
+                {% csrf_token %}
+                <div class="container w-75">
+                    {{ form|crispy }}
+                    <button class="btn btn-success float-right" type="submit">Зарегистрироваться</button>
+                </div>
+            </form>
+        </div>
+    </div>
+{% endblock %}

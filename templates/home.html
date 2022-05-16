@@ -1,0 +1,220 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    Home
+{% endblock %}
+
+{% block content %}
+    <div class="container-fluid flex">
+        <div class="row" id="row">
+            <div class="col-lg-3 bg-light my_sidebar">
+                <div class="sidebar-sticky">
+                    <form>
+                        <div class="row p-2">
+                            <input type="text" class="col form-control ml-3 mr-3" id="task_table_title"
+                                   placeholder="Введите название доски задач" required>
+                            <input type="submit" class="col-auto btn btn-success ml-lg-auto ml-3 mr-3"
+                                   id="button_create_task_table"
+                                   onclick="createTaskTable()" value="Создать">
+                        </div>
+                    </form>
+                    <ul class="nav flex flex-column p-3 nav-pills nav-stacked" id="task_tables">
+                        {% for tt in task_tables %}
+                            <li class="nav-item row p-2">
+                                <a class="nav-link col mr-3" id="nav-link-{{ tt.pk }}" href="#"
+                                   onclick="loadTaskTable({{ tt.pk }})">
+                                    {{ tt.title }}
+                                </a>
+                                <a href="#" class="col-auto btn btn-danger ml-auto"
+                                   onclick="deleteTaskTable({{ tt.pk }})">
+                                    <i class="fa fa-trash"></i>
+                                </a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            <main role="main" class="col-lg-9 ml-auto pt-3 px-4" id="main">
+                <div class="jumbotron">
+                    <form>
+                        <input type="text" class="form-control shadow-none border-0 mb-2" id="task_title"
+                               placeholder="Введите название задачи" required>
+                        <input type="text" class="form-control shadow-none mb-2" id="task_description"
+                               placeholder="Введите текст задачи">
+                        <input type="datetime-local" class="form-control shadow-none mb-3" id="task_date">
+                        <div class="row">
+                            <input type="submit" class="btn btn-success ml-lg-auto ml-3 mr-3" id="button_create_task"
+                                   onclick="createTask()" value="Создать">
+                        </div>
+                    </form>
+                </div>
+                <div id="task_table"></div>
+            </main>
+        </div>
+    </div>
+{% endblock %}
+
+{% block javascript %}
+    <script>
+        let current_task_table_id;
+        let isMobile = window.matchMedia("only screen and (max-width: 760px)").matches;
+
+        window.addEventListener("resize", () => {
+            isMobile = window.matchMedia("only screen and (max-width: 760px)").matches;
+            loadTaskTable(current_task_table_id);
+        });
+
+        function createTask() {
+            $(document).ready(function () {
+                $.ajax({
+                    "url": "{% url 'task' %}",
+                    "type": "POST",
+                    "data": {
+                        "task_table_id": current_task_table_id,
+                        "title": $("#task_title").val(),
+                        "description": $("#task_description").val(),
+                        "date": $("#task_date").val(),
+                    },
+                    "headers": {"X-CSRFToken": "{{ csrf_token }}"},
+                    "success": function (response) {
+                        if (response.status === 200) {
+                            $("#task_title").val('');
+                            $("#task_description").val('');
+                            loadTaskTable(current_task_table_id);
+                        }
+                    },
+                });
+            });
+        }
+
+        function deleteTask(task_id) {
+            $(document).ready(function () {
+                $.ajax({
+                    "url": "{% url 'task' %}",
+                    "type": "DELETE",
+                    "data": {
+                        "task_id": task_id,
+                    },
+                    "headers": {"X-CSRFToken": "{{ csrf_token }}"},
+                    "success": function (response) {
+                        if (response.status === 200) {
+                            loadTaskTable(response['task_table_id']);
+                        }
+                    },
+                });
+            });
+        }
+
+        function loadTaskTable(task_table_id) {
+            $(document).ready(function () {
+                $.ajax({
+                    "url": "{% url 'task_table' %}",
+                    "type": "GET",
+                    "data": {
+                        "task_table_id": task_table_id
+                    },
+                    "headers": {"X-CSRFToken": "{{ csrf_token }}"},
+                    "success": function (response) {
+                        if (response.status === 200) {
+                            let taskHtml = "";
+                            response.tasks.forEach(task => {
+                                taskHtml += "<div class='card mb-2'><div class='card-header'>";
+                                taskHtml += "<div class='row'>";
+                                taskHtml += "<div class='mt-2 ml-2'>" + task['title'];
+                                if (task['date']) {
+                                    let date = task['date'].toString();
+                                    taskHtml += "<span class='text-muted'> | " + date.slice(0, 10) + " " + date.slice(12, 16) + "</span>";
+                                }
+                                taskHtml += "</div>";
+                                taskHtml += "<a href='#' class='btn btn-danger ml-auto' onclick='deleteTask(" + task['id'] + ")'><i class='fa fa-trash'></i></a>";
+                                taskHtml += "</div>";
+                                taskHtml += "</div>";
+                                if (task['description']) {
+                                    taskHtml += "<div class='card-body'>" + task['description'] + "</div>";
+                                }
+                                taskHtml += "</div>";
+                            });
+                            $("#task_table").html(taskHtml);
+                            $("#nav-link-" + current_task_table_id).removeClass("active");
+                            $("#nav-link-" + task_table_id).addClass("active");
+                            current_task_table_id = task_table_id;
+                            let now = new Date();
+                            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+                            document.getElementById("task_date").value = now.toISOString().slice(0, 16);
+                            if (!isMobile) {
+                                $("#row").height(Math.max(window.innerHeight - 56, $("#main").height()));
+                            }
+                        }
+                    },
+                });
+            });
+        }
+
+        function createTaskTable() {
+            $(document).ready(function () {
+                $.ajax({
+                    "url": "{% url 'task_table' %}",
+                    "type": "POST",
+                    "data": {
+                        "title": $("#task_table_title").val(),
+                    },
+                    "headers": {"X-CSRFToken": "{{ csrf_token }}"},
+                    "success": function (response) {
+                        if (response.status === 200) {
+                            $("#task_table_title").val('');
+                            loadTaskTables();
+                            loadTaskTable(response.task_table_id);
+                        }
+                    },
+                });
+            });
+        }
+
+        function deleteTaskTable(task_table_id) {
+            $(document).ready(function () {
+                $.ajax({
+                    "url": "{% url 'task_table' %}",
+                    "type": "DELETE",
+                    "data": {
+                        "task_table_id": task_table_id,
+                    },
+                    "headers": {"X-CSRFToken": "{{ csrf_token }}"},
+                    "success": function (response) {
+                        if (response.status === 200) {
+                            document.location.reload();
+                        }
+                    },
+                });
+            });
+        }
+
+        function loadTaskTables() {
+            $(document).ready(function () {
+                $.ajax({
+                    "url": "{% url 'task_table' %}",
+                    "type": "GET",
+                    "headers": {"X-CSRFToken": "{{ csrf_token }}"},
+                    "success": function (response) {
+                        if (response.status === 200) {
+                            let taskTablesHtml = "";
+                            response.task_tables.forEach(task_table => {
+                                taskTablesHtml += "<li class='nav-item row p-2'>";
+                                taskTablesHtml += "<a class='nav-link col mr-3' id='nav-link-" + task_table['id'] + "' href='#'";
+                                taskTablesHtml += "onclick='loadTaskTable(" + task_table['id'] + ")'>";
+                                taskTablesHtml += task_table['title'] + "</a>";
+                                taskTablesHtml += "<a href='#' class='col-auto btn btn-danger ml-auto' " +
+                                    "onclick='deleteTaskTable(" + task_table['id'] + ")'><i class='fa fa-trash'></i></a>";
+                                taskTablesHtml += "</li>";
+                            });
+                            $("#task_tables").html(taskTablesHtml);
+                        }
+                    },
+                });
+            });
+        }
+
+        {% if task_tables.count %}
+            loadTaskTable({{ task_tables.0.pk }})
+        {% endif %}
+    </script>
+{% endblock %}
