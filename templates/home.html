@@ -20,7 +20,7 @@
                     </form>
                     <ul class="nav flex flex-column p-3 nav-pills nav-stacked" id="task_tables">
                         {% for tt in task_tables %}
-                            <li class="nav-item row p-2">
+                            <li class="nav-item row p-2" id="task_table-{{ tt.pk }}">
                                 <a class="nav-link col mr-3" id="nav-link-{{ tt.pk }}" href="#"
                                    onclick="loadTaskTable({{ tt.pk }})">
                                     {{ tt.title }}
@@ -60,9 +60,35 @@
         let isMobile = window.matchMedia("only screen and (max-width: 760px)").matches;
 
         window.addEventListener("resize", () => {
-            isMobile = window.matchMedia("only screen and (max-width: 760px)").matches;
-            loadTaskTable(current_task_table_id);
+            resizeLeftSidebar();
         });
+
+        function resizeLeftSidebar() {
+            let isMobile = window.matchMedia("only screen and (max-width: 760px)").matches;
+            if (!isMobile) {
+                $("#row").height(Math.max(window.innerHeight - 56, $("#main").height()));
+            }
+        }
+
+        function taskToHtml(task) {
+            let taskHtml = "";
+            taskHtml += "<div class='card mb-2' id='task-" + task['id'] + "'><div class='card-header'>";
+            taskHtml += "<div class='row'>";
+            taskHtml += "<div class='mt-2 ml-2'>" + task['title'];
+            if (task['date']) {
+                let date = task['date'].toString();
+                taskHtml += "<span class='text-muted'> | " + date.slice(0, 10) + " " + date.slice(12, 16) + "</span>";
+            }
+            taskHtml += "</div>";
+            taskHtml += "<a href='#' class='btn btn-danger ml-auto' onclick='deleteTask(" + task['id'] + ")'><i class='fa fa-trash'></i></a>";
+            taskHtml += "</div>";
+            taskHtml += "</div>";
+            if (task['description']) {
+                taskHtml += "<div class='card-body'>" + task['description'] + "</div>";
+            }
+            taskHtml += "</div>";
+            return taskHtml;
+        }
 
         function createTask() {
             $(document).ready(function () {
@@ -80,7 +106,10 @@
                         if (response.status === 200) {
                             $("#task_title").val('');
                             $("#task_description").val('');
-                            loadTaskTable(current_task_table_id);
+                            let task = response['task'];
+                            let taskHtml = taskToHtml(task);
+                            $("#task_table").append(taskHtml);
+                            resizeLeftSidebar();
                         }
                     },
                 });
@@ -98,7 +127,8 @@
                     "headers": {"X-CSRFToken": "{{ csrf_token }}"},
                     "success": function (response) {
                         if (response.status === 200) {
-                            loadTaskTable(response['task_table_id']);
+                            $("#task-" + task_id).remove();
+                            resizeLeftSidebar();
                         }
                     },
                 });
@@ -116,38 +146,36 @@
                     "headers": {"X-CSRFToken": "{{ csrf_token }}"},
                     "success": function (response) {
                         if (response.status === 200) {
-                            let taskHtml = "";
-                            response.tasks.forEach(task => {
-                                taskHtml += "<div class='card mb-2'><div class='card-header'>";
-                                taskHtml += "<div class='row'>";
-                                taskHtml += "<div class='mt-2 ml-2'>" + task['title'];
-                                if (task['date']) {
-                                    let date = task['date'].toString();
-                                    taskHtml += "<span class='text-muted'> | " + date.slice(0, 10) + " " + date.slice(12, 16) + "</span>";
-                                }
-                                taskHtml += "</div>";
-                                taskHtml += "<a href='#' class='btn btn-danger ml-auto' onclick='deleteTask(" + task['id'] + ")'><i class='fa fa-trash'></i></a>";
-                                taskHtml += "</div>";
-                                taskHtml += "</div>";
-                                if (task['description']) {
-                                    taskHtml += "<div class='card-body'>" + task['description'] + "</div>";
-                                }
-                                taskHtml += "</div>";
-                            });
-                            $("#task_table").html(taskHtml);
+                            let tasksHtml = "";
+                            if (response['tasks']) {
+                                response['tasks'].forEach(task => {
+                                    tasksHtml += taskToHtml(task);
+                                });
+                                $("#task_table").html(tasksHtml);
+                            }
                             $("#nav-link-" + current_task_table_id).removeClass("active");
                             $("#nav-link-" + task_table_id).addClass("active");
                             current_task_table_id = task_table_id;
-                            let now = new Date();
-                            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-                            document.getElementById("task_date").value = now.toISOString().slice(0, 16);
-                            if (!isMobile) {
-                                $("#row").height(Math.max(window.innerHeight - 56, $("#main").height()));
-                            }
                         }
+                        let now = new Date();
+                        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+                        document.getElementById("task_date").value = now.toISOString().slice(0, 16);
+                        resizeLeftSidebar();
                     },
                 });
             });
+        }
+
+        function taskTableToHtml(task_table) {
+            let taskTableHtml = "";
+            taskTableHtml += "<li class='nav-item row p-2' id='task_table-" + task_table['id'] + "'>";
+            taskTableHtml += "<a class='nav-link col mr-3' id='nav-link-" + task_table['id'] + "' href='#'";
+            taskTableHtml += "onclick='loadTaskTable(" + task_table['id'] + ")'>";
+            taskTableHtml += task_table['title'] + "</a>";
+            taskTableHtml += "<a href='#' class='col-auto btn btn-danger ml-auto' " +
+                "onclick='deleteTaskTable(" + task_table['id'] + ")'><i class='fa fa-trash'></i></a>";
+            taskTableHtml += "</li>";
+            return taskTableHtml;
         }
 
         function createTaskTable() {
@@ -162,8 +190,9 @@
                     "success": function (response) {
                         if (response.status === 200) {
                             $("#task_table_title").val('');
-                            loadTaskTables();
-                            loadTaskTable(response.task_table_id);
+                            let task_table = response['task_table'];
+                            let taskTableHtml = taskTableToHtml(task_table);
+                            $("#task_tables").append(taskTableHtml);
                         }
                     },
                 });
@@ -181,7 +210,10 @@
                     "headers": {"X-CSRFToken": "{{ csrf_token }}"},
                     "success": function (response) {
                         if (response.status === 200) {
-                            document.location.reload();
+                            $("#task_table-" + task_table_id).remove();
+                            if (current_task_table_id === task_table_id) {
+                                $("#task_table").html('');
+                            }
                         }
                     },
                 });
@@ -197,14 +229,8 @@
                     "success": function (response) {
                         if (response.status === 200) {
                             let taskTablesHtml = "";
-                            response.task_tables.forEach(task_table => {
-                                taskTablesHtml += "<li class='nav-item row p-2'>";
-                                taskTablesHtml += "<a class='nav-link col mr-3' id='nav-link-" + task_table['id'] + "' href='#'";
-                                taskTablesHtml += "onclick='loadTaskTable(" + task_table['id'] + ")'>";
-                                taskTablesHtml += task_table['title'] + "</a>";
-                                taskTablesHtml += "<a href='#' class='col-auto btn btn-danger ml-auto' " +
-                                    "onclick='deleteTaskTable(" + task_table['id'] + ")'><i class='fa fa-trash'></i></a>";
-                                taskTablesHtml += "</li>";
+                            response['task_tables'].forEach(task_table => {
+                                taskTablesHtml += taskTableToHtml(task_table);
                             });
                             $("#task_tables").html(taskTablesHtml);
                         }
@@ -213,8 +239,10 @@
             });
         }
 
-        {% if task_tables.count %}
+        {% if task_tables.0 %}
             loadTaskTable({{ task_tables.0.pk }})
+        {% else %}
+            loadTaskTable();
         {% endif %}
     </script>
 {% endblock %}
