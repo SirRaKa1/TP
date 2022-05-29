@@ -29,6 +29,8 @@
                         {{ user.email }}
                     </a>
                     <div class="dropdown-menu dropdown-menu-right" aria-labelledby="userMenu">
+                        <a class="dropdown-item" href="{% url 'password_change' %}">Смена пароля</a>
+                        <div class="dropdown-divider"></div>
                         <a class="dropdown-item" href="{% url 'account_logout' %}">Выйти</a>
                     </div>
                 {% else %}
