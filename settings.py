@@ -37,6 +37,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'users',
+    'pages',
 
     # 3d party
     'allauth',
@@ -46,6 +48,9 @@ INSTALLED_APPS = [
 
     # Local
     'tasks',
+    'pages',
+    'users',
+    'articles',
 ]
 
 MIDDLEWARE = [
